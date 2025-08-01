@@ -289,3 +289,26 @@ function cleanupInactiveUsers() {
 }
 
 setInterval(cleanupInactiveUsers, 10000);
+
+let viewportHeight = window.innerHeight;
+window.addEventListener('resize', () => {
+    const currentHeight = window.innerHeight;
+    if (currentHeight < viewportHeight * 0.75) {
+        document.body.classList.add('keyboard-open');
+        if (chatMessages) {
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 300);
+        }
+    } else {
+        document.body.classList.remove('keyboard-open');
+    }
+});
+
+messageInput.addEventListener('focus', () => {
+    if (window.innerWidth <= 600) {
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 300);
+    }
+});
