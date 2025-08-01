@@ -1,11 +1,12 @@
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAaKAGAcViWooWrHUaKiIUoFw4mMgJXVJ8",
+    authDomain: "open-chat-b1f00.firebaseapp.com",
+    databaseURL: "https://open-chat-b1f00-default-rtdb.firebaseio.com",
+    projectId: "open-chat-b1f00",
+    storageBucket: "open-chat-b1f00.firebasestorage.app",
+    messagingSenderId: "960699523603",
+    appId: "1:960699523603:web:cd73dfb560d2ffb39915e6",
+    measurementId: "G-RFHR8XBHJ7"
 };
 
 firebase.initializeApp(firebaseConfig);
