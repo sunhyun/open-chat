@@ -165,9 +165,17 @@ function joinRoom(roomId, roomName) {
     const messagesRef = database.ref(`rooms/${roomId}/messages`);
     const messageListener = messagesRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
-        displayMessage(message);
+        displayMessage(message, snapshot.key);
     });
     roomListeners.push({ ref: messagesRef, event: 'child_added', listener: messageListener });
+    
+    const messageRemovedListener = messagesRef.on('child_removed', (snapshot) => {
+        const messageElement = document.getElementById(`message-${snapshot.key}`);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    });
+    roomListeners.push({ ref: messagesRef, event: 'child_removed', listener: messageRemovedListener });
     
     const usersRef = database.ref(`rooms/${roomId}/users`);
     const userListener = usersRef.on('value', (snapshot) => {
@@ -192,6 +200,24 @@ function joinRoom(roomId, roomName) {
             content: `${currentUser.nickname}님이 연결이 끊어졌습니다.`,
             timestamp: firebase.database.ServerValue.TIMESTAMP,
             type: 'system'
+        });
+    });
+    
+    // 방 입장 시 오래된 메시지 정리
+    cleanupRoomMessages(roomId);
+}
+
+function cleanupRoomMessages(roomId) {
+    const messagesRef = database.ref(`rooms/${roomId}/messages`);
+    messagesRef.once('value', (snapshot) => {
+        const messages = snapshot.val() || {};
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        Object.entries(messages).forEach(([messageId, message]) => {
+            if (message.timestamp && (now - message.timestamp > oneHour)) {
+                database.ref(`rooms/${roomId}/messages/${messageId}`).remove();
+            }
         });
     });
 }
@@ -244,8 +270,9 @@ function sendSystemMessage(content) {
     }
 }
 
-function displayMessage(message) {
+function displayMessage(message, messageId) {
     const messageDiv = document.createElement('div');
+    messageDiv.id = `message-${messageId}`;
     
     if (message.type === 'system') {
         messageDiv.className = 'system-message';
@@ -304,6 +331,52 @@ function cleanupInactiveUsers() {
 }
 
 setInterval(cleanupInactiveUsers, 10000);
+
+function cleanupOldMessages() {
+    if (!currentRoom) return;
+    
+    const messagesRef = database.ref(`rooms/${currentRoom}/messages`);
+    messagesRef.once('value', (snapshot) => {
+        const messages = snapshot.val() || {};
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
+        
+        Object.entries(messages).forEach(([messageId, message]) => {
+            if (message.timestamp && (now - message.timestamp > oneHour)) {
+                database.ref(`rooms/${currentRoom}/messages/${messageId}`).remove();
+            }
+        });
+    });
+}
+
+// 5분마다 오래된 메시지 정리
+setInterval(cleanupOldMessages, 5 * 60 * 1000);
+
+// 방에 들어갈 때도 한 번 정리
+function cleanupAllRoomsMessages() {
+    const roomsRef = database.ref('rooms');
+    roomsRef.once('value', (snapshot) => {
+        const rooms = snapshot.val() || {};
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        Object.keys(rooms).forEach(roomId => {
+            const messagesRef = database.ref(`rooms/${roomId}/messages`);
+            messagesRef.once('value', (messagesSnapshot) => {
+                const messages = messagesSnapshot.val() || {};
+                
+                Object.entries(messages).forEach(([messageId, message]) => {
+                    if (message.timestamp && (now - message.timestamp > oneHour)) {
+                        database.ref(`rooms/${roomId}/messages/${messageId}`).remove();
+                    }
+                });
+            });
+        });
+    });
+}
+
+// 앱 시작 시 전체 방의 오래된 메시지 정리
+cleanupAllRoomsMessages();
 
 let viewportHeight = window.innerHeight;
 window.addEventListener('resize', () => {
