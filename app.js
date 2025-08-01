@@ -15,6 +15,7 @@ const database = firebase.database();
 let currentUser = null;
 let currentRoom = null;
 let roomListeners = [];
+let connectedListener = null;
 
 const loginContainer = document.getElementById('login-container');
 const roomListContainer = document.getElementById('room-list-container');
@@ -126,6 +127,12 @@ function createRoom(roomName) {
 }
 
 function joinRoom(roomId, roomName) {
+    // 기존 리스너 정리
+    roomListeners.forEach(({ ref, event, listener }) => {
+        ref.off(event, listener);
+    });
+    roomListeners = [];
+    
     currentRoom = roomId;
     
     roomListContainer.classList.add('hidden');
@@ -142,7 +149,10 @@ function joinRoom(roomId, roomName) {
     userRef.onDisconnect().remove();
     
     const connectedRef = database.ref('.info/connected');
-    connectedRef.on('value', (snapshot) => {
+    if (connectedListener) {
+        connectedRef.off('value', connectedListener);
+    }
+    connectedListener = connectedRef.on('value', (snapshot) => {
         if (snapshot.val() === true) {
             userRef.set({
                 nickname: currentUser.nickname,
@@ -157,7 +167,7 @@ function joinRoom(roomId, roomName) {
         const message = snapshot.val();
         displayMessage(message);
     });
-    roomListeners.push({ ref: messagesRef, listener: messageListener });
+    roomListeners.push({ ref: messagesRef, event: 'child_added', listener: messageListener });
     
     const usersRef = database.ref(`rooms/${roomId}/users`);
     const userListener = usersRef.on('value', (snapshot) => {
@@ -167,7 +177,7 @@ function joinRoom(roomId, roomName) {
         
         database.ref(`rooms/${roomId}/userCount`).set(count);
     });
-    roomListeners.push({ ref: usersRef, listener: userListener });
+    roomListeners.push({ ref: usersRef, event: 'value', listener: userListener });
     
     const systemMessageRef = database.ref(`rooms/${roomId}/messages`).push();
     systemMessageRef.set({
@@ -193,10 +203,15 @@ function leaveRoom() {
         const userRef = database.ref(`rooms/${currentRoom}/users/${currentUser.id}`);
         userRef.remove();
         
-        roomListeners.forEach(({ ref, listener }) => {
-            ref.off('value', listener);
+        roomListeners.forEach(({ ref, event, listener }) => {
+            ref.off(event, listener);
         });
         roomListeners = [];
+        
+        if (connectedListener) {
+            database.ref('.info/connected').off('value', connectedListener);
+            connectedListener = null;
+        }
         
         currentRoom = null;
         chatContainer.classList.add('hidden');
