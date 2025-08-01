@@ -141,6 +141,17 @@ function joinRoom(roomId, roomName) {
     
     userRef.onDisconnect().remove();
     
+    const connectedRef = database.ref('.info/connected');
+    connectedRef.on('value', (snapshot) => {
+        if (snapshot.val() === true) {
+            userRef.set({
+                nickname: currentUser.nickname,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            userRef.onDisconnect().remove();
+        }
+    });
+    
     const messagesRef = database.ref(`rooms/${roomId}/messages`);
     const messageListener = messagesRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
@@ -158,7 +169,21 @@ function joinRoom(roomId, roomName) {
     });
     roomListeners.push({ ref: usersRef, listener: userListener });
     
-    sendSystemMessage(`${currentUser.nickname}님이 입장하셨습니다.`);
+    const systemMessageRef = database.ref(`rooms/${roomId}/messages`).push();
+    systemMessageRef.set({
+        content: `${currentUser.nickname}님이 입장하셨습니다.`,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        type: 'system'
+    });
+    
+    const disconnectMessageRef = database.ref(`rooms/${roomId}/messages`).push();
+    userRef.onDisconnect().remove().then(() => {
+        disconnectMessageRef.onDisconnect().set({
+            content: `${currentUser.nickname}님이 연결이 끊어졌습니다.`,
+            timestamp: firebase.database.ServerValue.TIMESTAMP,
+            type: 'system'
+        });
+    });
 }
 
 function leaveRoom() {
@@ -233,3 +258,34 @@ window.addEventListener('beforeunload', () => {
         userRef.remove();
     }
 });
+
+setInterval(() => {
+    if (currentRoom && currentUser) {
+        const userRef = database.ref(`rooms/${currentRoom}/users/${currentUser.id}`);
+        userRef.update({
+            lastSeen: firebase.database.ServerValue.TIMESTAMP
+        });
+    }
+}, 30000);
+
+function cleanupInactiveUsers() {
+    if (!currentRoom) return;
+    
+    const usersRef = database.ref(`rooms/${currentRoom}/users`);
+    usersRef.once('value', (snapshot) => {
+        const users = snapshot.val() || {};
+        const now = Date.now();
+        const timeout = 60000;
+        
+        Object.entries(users).forEach(([userId, user]) => {
+            if (user.lastSeen && (now - user.lastSeen > timeout)) {
+                if (userId !== currentUser.id) {
+                    database.ref(`rooms/${currentRoom}/users/${userId}`).remove();
+                    sendSystemMessage(`${user.nickname}님이 연결이 끊어졌습니다.`);
+                }
+            }
+        });
+    });
+}
+
+setInterval(cleanupInactiveUsers, 10000);

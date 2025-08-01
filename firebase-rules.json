@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "rooms": {
+      ".read": true,
+      "$roomId": {
+        ".write": true,
+        "messages": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['content', 'timestamp']) && newData.child('content').isString() && newData.child('timestamp').isNumber()"
+          }
+        },
+        "users": {
+          "$userId": {
+            ".validate": "newData.hasChildren(['nickname', 'joinedAt']) && newData.child('nickname').isString()",
+            "lastSeen": {
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
+        "userCount": {
+          ".validate": "newData.isNumber()"
+        },
+        "name": {
+          ".validate": "newData.isString()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    }
+  }
+}
