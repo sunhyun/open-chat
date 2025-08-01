@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Chat</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="login-container" class="container">
+            <h1>Open Chat</h1>
+            <div class="form-group">
+                <input type="text" id="nickname-input" placeholder="닉네임을 입력하세요" maxlength="20">
+                <button id="enter-btn" class="btn-primary">입장하기</button>
+            </div>
+        </div>
+
+        <div id="room-list-container" class="container hidden">
+            <div class="header">
+                <h2>채팅방 목록</h2>
+                <span id="user-info"></span>
+            </div>
+            <div class="room-actions">
+                <input type="text" id="room-name-input" placeholder="채팅방 이름">
+                <button id="create-room-btn" class="btn-primary">채팅방 만들기</button>
+            </div>
+            <div id="room-list" class="room-list"></div>
+        </div>
+
+        <div id="chat-container" class="container hidden">
+            <div class="chat-header">
+                <button id="back-to-rooms" class="btn-secondary">← 뒤로</button>
+                <h3 id="room-title"></h3>
+                <span id="user-count">0명</span>
+            </div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" id="message-input" placeholder="메시지를 입력하세요...">
+                <button id="send-btn" class="btn-primary">전송</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
