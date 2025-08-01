@@ -3,14 +3,17 @@
     "rooms": {
       ".read": true,
       "$roomId": {
-        ".write": true,
         "messages": {
+          ".read": true,
           "$messageId": {
-            ".validate": "newData.hasChildren(['content', 'timestamp']) && newData.child('content').isString() && newData.child('timestamp').isNumber()"
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['content', 'timestamp']) && newData.child('content').isString() && newData.child('timestamp').isNumber() && (!newData.hasChild('author') || newData.child('author').isString()) && (!newData.hasChild('type') || newData.child('type').isString())"
           }
         },
         "users": {
+          ".read": true,
           "$userId": {
+            ".write": true,
             ".validate": "newData.hasChildren(['nickname', 'joinedAt']) && newData.child('nickname').isString()",
             "lastSeen": {
               ".validate": "newData.isNumber()"
@@ -18,12 +21,18 @@
           }
         },
         "userCount": {
+          ".read": true,
+          ".write": true,
           ".validate": "newData.isNumber()"
         },
         "name": {
+          ".read": true,
+          ".write": "!data.exists()",
           ".validate": "newData.isString()"
         },
         "createdAt": {
+          ".read": true,
+          ".write": "!data.exists()",
           ".validate": "newData.isNumber()"
         }
       }

@@ -203,23 +203,7 @@ function joinRoom(roomId, roomName) {
         });
     });
     
-    // 방 입장 시 오래된 메시지 정리
-    cleanupRoomMessages(roomId);
-}
-
-function cleanupRoomMessages(roomId) {
-    const messagesRef = database.ref(`rooms/${roomId}/messages`);
-    messagesRef.once('value', (snapshot) => {
-        const messages = snapshot.val() || {};
-        const now = Date.now();
-        const oneHour = 60 * 60 * 1000;
-        
-        Object.entries(messages).forEach(([messageId, message]) => {
-            if (message.timestamp && (now - message.timestamp > oneHour)) {
-                database.ref(`rooms/${roomId}/messages/${messageId}`).remove();
-            }
-        });
-    });
+    // 방 입장 시 오래된 메시지는 displayMessage에서 필터링됨
 }
 
 function leaveRoom() {
@@ -271,8 +255,17 @@ function sendSystemMessage(content) {
 }
 
 function displayMessage(message, messageId) {
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    // 1시간이 지난 메시지는 표시하지 않음
+    if (message.timestamp && (now - message.timestamp > oneHour)) {
+        return;
+    }
+    
     const messageDiv = document.createElement('div');
     messageDiv.id = `message-${messageId}`;
+    messageDiv.dataset.timestamp = message.timestamp;
     
     if (message.type === 'system') {
         messageDiv.className = 'system-message';
@@ -332,51 +325,30 @@ function cleanupInactiveUsers() {
 
 setInterval(cleanupInactiveUsers, 10000);
 
-function cleanupOldMessages() {
+// 주기적으로 오래된 메시지 숨기기 (UI 갱신)
+function hideOldMessages() {
     if (!currentRoom) return;
     
-    const messagesRef = database.ref(`rooms/${currentRoom}/messages`);
-    messagesRef.once('value', (snapshot) => {
-        const messages = snapshot.val() || {};
-        const now = Date.now();
-        const oneHour = 60 * 60 * 1000; // 1시간 (밀리초)
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    const messages = chatMessages.querySelectorAll('.message, .system-message');
+    
+    messages.forEach(messageEl => {
+        const messageId = messageEl.id.replace('message-', '');
+        const timeEl = messageEl.querySelector('.message-time');
         
-        Object.entries(messages).forEach(([messageId, message]) => {
-            if (message.timestamp && (now - message.timestamp > oneHour)) {
-                database.ref(`rooms/${currentRoom}/messages/${messageId}`).remove();
+        if (timeEl) {
+            // 시간 정보에서 타임스탬프 추출하는 대신 data 속성 사용
+            const timestamp = parseInt(messageEl.dataset.timestamp);
+            if (timestamp && (now - timestamp > oneHour)) {
+                messageEl.style.display = 'none';
             }
-        });
+        }
     });
 }
 
-// 5분마다 오래된 메시지 정리
-setInterval(cleanupOldMessages, 5 * 60 * 1000);
-
-// 방에 들어갈 때도 한 번 정리
-function cleanupAllRoomsMessages() {
-    const roomsRef = database.ref('rooms');
-    roomsRef.once('value', (snapshot) => {
-        const rooms = snapshot.val() || {};
-        const now = Date.now();
-        const oneHour = 60 * 60 * 1000;
-        
-        Object.keys(rooms).forEach(roomId => {
-            const messagesRef = database.ref(`rooms/${roomId}/messages`);
-            messagesRef.once('value', (messagesSnapshot) => {
-                const messages = messagesSnapshot.val() || {};
-                
-                Object.entries(messages).forEach(([messageId, message]) => {
-                    if (message.timestamp && (now - message.timestamp > oneHour)) {
-                        database.ref(`rooms/${roomId}/messages/${messageId}`).remove();
-                    }
-                });
-            });
-        });
-    });
-}
-
-// 앱 시작 시 전체 방의 오래된 메시지 정리
-cleanupAllRoomsMessages();
+// 5분마다 UI에서 오래된 메시지 숨기기
+setInterval(hideOldMessages, 5 * 60 * 1000);
 
 let viewportHeight = window.innerHeight;
 window.addEventListener('resize', () => {
